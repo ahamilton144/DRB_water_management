@@ -1,11 +1,11 @@
 [project]
 name = "pywr-drb"
 version = "0.0.0"
-authors = [
-    {name = "", email = ""}
-]
-license = "file: LICENSE"
-description = "file: README.md"
+#authors = [
+#    {name = "", email = ""}
+#]
+license = {file = "LICENSE"}
+description = "Water management model for the Delaware River Basin, based on the pywr simulation framework"
 dependencies = [
     "pywr",
     "h5py",

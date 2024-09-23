@@ -900,7 +900,7 @@ def make_model(
 
     ### Get total release needed from NYC reservoirs to satisfy Montague & Trenton flow targets,
     ### above and beyond their individually mandated releases, & after accting for non-NYC inflows and NJ diversions.
-    ### THis first step is based on predicted inflows to Montague in 2 days and Trenton in 4 days, and is used
+    ### This first step is based on predicted inflows to Montague in 2 days and Trenton in 4 days, and is used
     ### to calculate balanced releases from all 3 reservoirs. But only Cannonsville & Pepacton actually use these
     ### releases, because Neversink is adjusted later because it is 1 day closer travel time & has more info.
     ### Uses custom Pywr parameter.
