@@ -113,11 +113,29 @@ class PywrdrbModelBuilder():
             "nodes": [],
             "edges": [],
             "parameters": {}
-        }        
+        }                
+
+    def reset_model(self):
+        self.NSCENARIOS = 1
+        self.model_dict = {
+            "metadata": {"title": "DRB", "description": "Pywr DRB representation", "minimum_version": "0.4"},
+            "timestepper": {"start": self.start_date, "end": self.end_date, "timestep": self.timestep},
+            "scenarios": [{"name": "inflow", "size": self.NSCENARIOS}], # default to 1 scenario
+            "nodes": [],
+            "edges": [],
+            "parameters": {}
+        }
+    #!! revisit this to incorporate other scenario strategies
+                   
+    def make_model(self):
+
+        ####################################################################
+        ### Add pywr scenarios
+        ####################################################################
 
         ### Add inflow scenarios
         # We might want to extend this to parameter as well.
-        inflow_ensemble_indices = options.get("inflow_ensemble_indices")
+        inflow_ensemble_indices = self.options.get("inflow_ensemble_indices")
         if inflow_ensemble_indices is not None:
             self.add_ensemble_inflow_scenarios(inflow_ensemble_indices)
 
@@ -129,13 +147,6 @@ class PywrdrbModelBuilder():
                 "values": [1.0],
             }
 
-    #!! revisit this to incorporate other scenario strategies
-    def add_ensemble_inflow_scenarios(self, inflow_ensemble_indices):
-        # Parallel strategy used in pywr
-        self.NSCENARIOS = len(inflow_ensemble_indices)
-        self.model_dict["scenarios"] = [{"name": "inflow", "size": self.NSCENARIOS}]
-                   
-    def make_model(self):
         #######################################################################
         ### Add major nodes (e.g., reservoirs) to model, along with corresponding minor 
         ### nodes (e.g., withdrawals), edges, & parameters
@@ -190,6 +201,11 @@ class PywrdrbModelBuilder():
         with open(f"{model_filename}", "w") as o:
             json.dump(self.model_dict, o, indent=4)
 
+    def add_ensemble_inflow_scenarios(self, inflow_ensemble_indices):
+        # Parallel strategy used in pywr
+        self.NSCENARIOS = len(inflow_ensemble_indices)
+        self.model_dict["scenarios"] = [{"name": "inflow", "size": self.NSCENARIOS}]
+        
     def add_node_major_reservoir(self, reservoir_name, downstream_lag, downstream_node):
         """
         Add a major reservoir node to the model. This step will also add a cluster of 
