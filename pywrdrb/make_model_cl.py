@@ -4,7 +4,6 @@ Contains functions used to construct a pywrdrb model in JSON format.
 
 import json
 import pandas as pd
-from collections import defaultdict
 
 from pywrdrb.utils.directories import input_dir, model_data_dir
 from pywrdrb.utils.lists import (
@@ -16,11 +15,10 @@ from pywrdrb.utils.lists import (
 from pywrdrb.utils.lists import drbc_lower_basin_reservoirs
 from pywrdrb.utils.constants import cfs_to_mgd
 from pywrdrb.pywr_drb_node_data import (
-    upstream_nodes_dict,
     immediate_downstream_nodes_dict,
     downstream_node_lags,
 )
-from pywrdrb.parameters.lower_basin_ffmp import lag_days_from_Trenton
+
 
 ### model options/parameters
 flow_prediction_mode = "regression_disagg"  ### 'regression_agg', 'regression_disagg', 'perfect_foresight', 'same_day', 'moving_average'
@@ -205,7 +203,7 @@ class PywrdrbModelBuilder():
         # Parallel strategy used in pywr
         self.NSCENARIOS = len(inflow_ensemble_indices)
         self.model_dict["scenarios"] = [{"name": "inflow", "size": self.NSCENARIOS}]
-        
+
     def add_node_major_reservoir(self, reservoir_name, downstream_lag, downstream_node):
         """
         Add a major reservoir node to the model. This step will also add a cluster of 
