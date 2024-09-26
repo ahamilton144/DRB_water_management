@@ -33,7 +33,7 @@ t0 = time.time()
 ### specify inflow type from command line args
 # nhmv10_withObsScaled nwmv21_withObsScaled nhmv10 nwmv21
 #inflow_type = sys.argv[1]
-inflow_type = "nwmv21"
+inflow_type = "nhmv10"
 
 assert (
     inflow_type in inflow_type_options
@@ -58,11 +58,30 @@ from pywrdrb.make_model_cl import PywrdrbModelBuilder
 # Set the filename based on inflow type
 model_filename = f"{model_data_dir}drb_model_full_{inflow_type}.json"
 
-
+### Original
 ## Run single trace for given inflow type
 if "ensemble" not in inflow_type:
-    #output_filename = f"{output_dir}drb_output_{inflow_type}.hdf5"
-    #model_filename = f"{model_data_dir}drb_model_full_{inflow_type}.json"
+    output_filename = f"{output_dir}drb_output_{inflow_type}.hdf5"
+    model_filename = f"{model_data_dir}drb_model_full_{inflow_type}.json"
+
+    ### make model json files
+    make_model(inflow_type, model_filename, start_date, end_date)
+
+    ### Load the model
+    model = Model.load(model_filename)
+
+    ### Add a storage recorder
+    TablesRecorder(
+        model, output_filename, parameters=[p for p in model.parameters if p.name]
+    )
+
+    ### Run the model
+    stats = model.run()
+    stats_df = stats.to_dataframe()
+
+### New model builder
+## Run single trace for given inflow type
+if "ensemble" not in inflow_type:
     output_filename = f"{output_dir}drb_output_{inflow_type}_cl.hdf5"
     model_filename = f"{model_data_dir}drb_model_full_{inflow_type}_cl.json"
 
