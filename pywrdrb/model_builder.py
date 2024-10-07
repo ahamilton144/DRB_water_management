@@ -249,19 +249,23 @@ class PywrdrbModelBuilder():
 
         
         ##### Add catchment node that sends inflows to reservoir
+        # f"flow_{reservoir_name}" is the parameter defined below. It will read in inflow csv.
         catchment = {
             "name": f"catchment_{reservoir_name}",
             "type": "catchment",
-            "flow": f"flow_{reservoir_name}",
+            "flow": f"flow_{reservoir_name}", 
+            # Note: flow is from f"{input_dir}catchment_inflow_{inflow_type}.csv"
         }
         model_dict["nodes"].append(catchment)
 
         ##### Add withdrawal node that withdraws flow from catchment for human use
+        # f"max_flow_catchmentWithdrawal_{reservoir_name}" is the parameter defined below. It will read in inflow csv.
         withdrawal = {
             "name": f"catchmentWithdrawal_{reservoir_name}",
             "type": "link",
             "cost": -15.0,
             "max_flow": f"max_flow_catchmentWithdrawal_{reservoir_name}",
+            # Note: "max_flow" is from f"{input_dir}sw_avg_wateruse_Pywr-DRB_Catchments.csv"
         }
         model_dict["nodes"].append(withdrawal)
 
@@ -271,6 +275,9 @@ class PywrdrbModelBuilder():
             "type": "output",
             "cost": -2000.0,
             "max_flow": f"max_flow_catchmentConsumption_{reservoir_name}",
+            # Note: "max_flow" is the product of "max_flow_catchmentWithdrawal_{reservoir_name}" and "prev_flow_catchmentWithdrawal_{reservoir_name}"
+            # "max_flow_catchmentWithdrawal_{reservoir_name}" is from f"{input_dir}sw_avg_wateruse_Pywr-DRB_Catchments.csv"
+            # "prev_flow_catchmentWithdrawal_{reservoir_name}" is from the current value (t-1) in f"catchmentWithdrawal_{reservoir_name}"
         }
         model_dict["nodes"].append(consumption)
 
@@ -283,6 +290,7 @@ class PywrdrbModelBuilder():
                 "type": "link",
                 "cost": -500.0,
                 "max_flow": f"starfit_release_{reservoir_name}",
+                # the fitted values are in f"{model_data_dir}drb_model_istarf_conus.csv"
             }
         # Lower basin reservoirs which contribute to Montague/Trenton
         elif starfit_release and regulatory_release:
@@ -291,14 +299,23 @@ class PywrdrbModelBuilder():
                 "type": "link",
                 "cost": -500.0,
                 "max_flow": f"downstream_release_target_{reservoir_name}",
+                # Note: f"downstream_release_target_{reservoir_name}" is the sum of its
+                # individually-mandated release from FFMP, flood control release, and 
+                # its contribution to the Montague/Trenton targets.
+                # Details are in add_parameter_nyc_reservoirs_balancing_methods()
             }
         # NYC Reservoirs
         elif regulatory_release and not starfit_release:
+            # outflow of cannonsville & pepacton will be overwrote later if predict_temperature is True.
             outflow = {
                 "name": f"outflow_{reservoir_name}",
                 "type": "link",
                 "cost": -1000.0,
                 "max_flow": f"downstream_release_target_{reservoir_name}",
+                # Note: f"downstream_release_target_{reservoir_name}" is the sum of its
+                # individually-mandated release from FFMP, flood control release, and 
+                # its contribution to the Montague/Trenton targets.
+                # Details are in add_parameter_nyc_reservoirs_balancing_methods()
             }
         model_dict["nodes"].append(outflow)
 
@@ -384,7 +401,8 @@ class PywrdrbModelBuilder():
                 "value": get_reservoir_max_release(reservoir_name, "flood"),
             }
 
-        # for STARFIT reservoirs, use custom parameter
+        # For STARFIT reservoirs (where we do not know the opertational rules), use custom parameter
+        # all the fitted values are in f"{model_data_dir}drb_model_istarf_conus.csv"
         if starfit_release:
             model_dict["parameters"][f"starfit_release_{reservoir_name}"] = {
                 "type": "STARFITReservoirRelease",
@@ -688,6 +706,7 @@ class PywrdrbModelBuilder():
             }
 
         ### Control curve index that tells us which level the aggregated NYC storage is currently in
+        # https://pywr.github.io/pywr/api/generated/pywr.parameters.control_curves.ControlCurveIndexParameter.html#pywr.parameters.control_curves.ControlCurveIndexParameter
         model_dict["parameters"]["drought_level_agg_nyc"] = {
             "type": "controlcurveindex",
             "storage_node": "reservoir_agg_nyc",
@@ -1123,7 +1142,7 @@ class PywrdrbModelBuilder():
         ### now calculate actual Cannonsville & Pepacton releases to meet Montague&Trenton, with assumed releases for Neversink & lower basin
         for reservoir in ["cannonsville", "pepacton"]:
             model_dict["parameters"][f"mrf_montagueTrenton_{reservoir}"] = {
-                "type": f"VolBalanceNYCDownstreamMRF_step{step}",
+                "type": f"VolBalanceNYCDownstreamMRF_step{step}", # step 1
                 "node": f"reservoir_{reservoir}",
             }
 
@@ -1351,7 +1370,7 @@ class PywrdrbModelBuilder():
             }
 
         ### get final downstream release from each NYC reservoir, which is the sum of its
-        ###    individually-mandated release from FFMP, flood control release, and its contribution to the
+        ### individually-mandated release from FFMP, flood control release, and its contribution to the
         ### Montague/Trenton targets
         for reservoir in reservoir_list_nyc:
             model_dict["parameters"][f"downstream_release_target_{reservoir}"] = {
@@ -1363,6 +1382,7 @@ class PywrdrbModelBuilder():
                     f"mrf_montagueTrenton_{reservoir}",
                 ],
             }
+
         ## From Lower Basin reservoirs: sum of STARFIT and mrf contribution
         for reservoir in drbc_lower_basin_reservoirs:
             model_dict["parameters"][f"downstream_release_target_{reservoir}"] = {
@@ -1389,15 +1409,67 @@ class PywrdrbModelBuilder():
 
     #!! Not yet complete
     def add_parameter_couple_temp_lstm(self):
-        model_dict = self.model_dict
         try:
             from pywrdrb.parameters.temperature import TemperaturePrediction
-
-            model_dict["parameters"]["predicted_mu_max_of_temperature"] = {
-                "type": "TemperaturePrediction"
-            }
         except Exception as e:
             print(f"Temperature prediction model not available. Error: {e}")
+
+        model_dict = self.model_dict
+        # Add the additional thermal release (plug-in need to be activated otherwise
+        # The additional thermal release is 0). The additional thermal releases only 
+        # apply to ["cannonsville", "pepacton"].
+
+        model_dict["parameters"]["thermal_release_requirement"] = {
+                "type": "TotalThermalReleaseRequirement",
+            }
+        
+        for reservoir in ["cannonsville", "pepacton"]:
+            # Overwrite the max flow of the outflow node with the additional thermal release.
+            # We searched over all nodes to find the node with the name "outflow_{reservoir}".
+            # Not the most efficient way, but it make the code more searchable.
+            for i, node in enumerate(model_dict["nodes"]):
+                if node["name"] == f"outflow_{reservoir}":
+                    model_dict["nodes"][i]["max_flow"] = f"downstream_add_thermal_release_to_target_{reservoir}"
+
+            # Add the additional thermal release to the downstream release target
+            model_dict["parameters"][f"downstream_add_thermal_release_to_target_{reservoir}"] = {
+                "type": "aggregated",
+                "agg_func": "sum",
+                "parameters": [
+                    f"downstream_release_target_{reservoir}",
+                    f"additional_thermal_release_{reservoir}"
+                ],
+            }
+
+            model_dict["parameters"][f"additional_thermal_release_{reservoir}"] = {
+                "type": "AllocateThermalReleaseRequirement",
+                "reservoir": reservoir,
+            }
+
+        model_dict["parameters"]["predicted_max_temperature_at_lordsville_run_lstm"] = {
+                "type": "PredictedMaxTemperatureAtLordsville",
+            }
+        
+        model_dict["parameters"]["predicted_max_temperature_at_lordsville_mu"] = {
+                "type": "GetTemperatureLSTMValue",
+                "variable": "mu",
+            }
+        model_dict["parameters"]["predicted_max_temperature_at_lordsville_sig"] = {
+                "type": "GetTemperatureLSTMValue",
+                "variable": "sig",
+            }
+        # Do we need to add an auxiliary node to store temperature?
+        # Do we need seperate parameters for mu and sig?
+        #model_dict["parameters"]["predicted_mu_max_of_temperature"] = {
+        #        "type": "TemperaturePrediction"
+        #    }
+
+
+        # Archive
+        #model_dict["parameters"]["predicted_mu_max_of_temperature"] = {
+        #        "type": "TemperaturePrediction"
+        #    }
+        
 
     #!! Not yet complete
     def add_parameter_couple_salinity_lstm(self):
