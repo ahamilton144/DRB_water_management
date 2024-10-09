@@ -36,7 +36,6 @@ import torch
 import torch_bmi
 # Set seed
 SEED = 4
-#np.random.seed(SEED)
 torch.manual_seed(SEED)
 
 class TemperatureLSTM():
