@@ -1411,8 +1411,10 @@ class PywrdrbModelBuilder():
     def add_parameter_couple_temp_lstm(self):
         try:
             from pywrdrb.parameters.temperature import (
+                TemperatureLSTM,
                 TemperatureModel,
                 TotalThermalReleaseRequirement, 
+                GetTemperatureLSTMValueWithoutThermalRelease,
                 AllocateThermalReleaseRequirement, 
                 PredictedMaxTemperatureAtLordsville, 
                 GetTemperatureLSTMValue

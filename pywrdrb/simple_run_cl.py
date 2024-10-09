@@ -11,10 +11,18 @@ import math
 import time
 from pywr.model import Model
 from pywr.recorders import TablesRecorder
+from pathnavigator import PathNavigator
 
-os.chdir(r"C:\Users\CL\Documents\GitHub\Pywr-DRB")
-sys.path.insert(0, os.path.abspath("./"))
-sys.path.insert(0, os.path.abspath("../"))
+root_dir = r"C:\Users\CL\Documents\GitHub\Pywr-DRB"
+pn = PathNavigator(root_dir)
+pn.chdir()
+pn.mkdir("temp_lstm_exp")
+pn.temp_lstm_exp.mkdir("models")
+pn.temp_lstm_exp.mkdir("outputs")
+pn.temp_lstm_exp.mkdir("figures")
+
+#sys.path.insert(0, os.path.abspath("./"))
+#sys.path.insert(0, os.path.abspath("../"))
 
 import pywrdrb.parameters.general
 import pywrdrb.parameters.ffmp
@@ -29,6 +37,7 @@ from pywrdrb.utils.hdf5 import (
     combine_batched_hdf5_outputs,
 )
 from pywrdrb.utils.options import inflow_type_options
+from pywrdrb.model_builder import PywrdrbModelBuilder
 
 class Timer:
     def __init__(self):
@@ -64,76 +73,88 @@ class Timer:
         minutes, seconds = divmod(remainder, 60)
         return f"{int(hours):02}:{int(minutes):02}:{int(seconds):02}"
     
+    def elapsed_seconds(self):
+        """Get the elapsed time in seconds."""
+        if self.start_time is None:
+            raise Exception("Timer has not been started yet!")
+        
+        # If the timer is still running, calculate elapsed time until now
+        if self.end_time is None:
+            elapsed_seconds = time.time() - self.start_time
+        else:
+            elapsed_seconds = self.end_time - self.start_time
+        return elapsed_seconds
+    
     def reset(self):
         """Reset the timer."""
         self.start_time = None
         self.end_time = None
         print("Timer reset.")
 
-timer = Timer()
+def run_model(inflow_type, predict_temperature, timer):
+    assert (
+        inflow_type in inflow_type_options
+    ), f"Invalid inflow_type specified. Options: {inflow_type_options}"
+    
+    ### assume we want to run the full range for each dataset
+    if (
+        inflow_type in ("nwmv21", "nhmv10", "WEAP_29June2023_gridmet")
+        or "withObsScaled" in inflow_type
+    ):
+        start_date = "1983-10-01"
+        end_date = "2016-12-31"
+    elif "syn_obs_pub" in inflow_type:
+        start_date = "1945-01-01"
+        end_date = "2021-12-31"
+    elif "obs_pub" in inflow_type:
+        start_date = "1945-01-01"
+        end_date = "2022-12-31"
+        
+    if predict_temperature:
+        tname = "with_temp_lstm"
+    else:
+        tname = "no_temp_lstm"
+        
+    # Set the filename based on inflow type
+    model_filename = rf"{pn.temp_lstm_exp.models.dir()}/drb_model_full_{inflow_type}_{tname}.json"
+    output_filename = rf"{pn.temp_lstm_exp.outputs.dir()}/drb_output_{inflow_type}_{tname}.hdf5"
+    
+    print(f"Running drb_model_full_{inflow_type}_{tname}.json")
+    ### make model json files
+    mb = PywrdrbModelBuilder(
+        inflow_type, 
+        start_date, 
+        end_date,
+        options={
+            "inflow_ensemble_indices":None,
+            "use_hist_NycNjDeliveries":True, 
+            "predict_temperature":predict_temperature, 
+            "predict_salinity":False, 
+            })
+    mb.make_model()
+    mb.write_model(model_filename)
 
-### specify inflow type from command line args
-# nhmv10_withObsScaled nwmv21_withObsScaled nhmv10 nwmv21
-#inflow_type = sys.argv[1]
-inflow_type = "nhmv10_withObsScaled"
+    timer.start()
+    ### Load the model
+    model = Model.load(model_filename)
+    
+    ### Add a storage recorder
+    TablesRecorder(
+        model, output_filename, parameters=[p for p in model.parameters if p.name]
+    )
+    
+    ### Run the model
+    stats = model.run()
+    #stats_df = stats.to_dataframe()
+    timer.stop()
+    print(f"Time used from loading model to complete the simulation: {timer.elapsed_time()}")
+    return timer.elapsed_seconds()
 
-assert (
-    inflow_type in inflow_type_options
-), f"Invalid inflow_type specified. Options: {inflow_type_options}"
-
-### assume we want to run the full range for each dataset
-if (
-    inflow_type in ("nwmv21", "nhmv10", "WEAP_29June2023_gridmet")
-    or "withObsScaled" in inflow_type
-):
-    start_date = "1983-10-01"
-    end_date = "2016-12-31"
-elif "syn_obs_pub" in inflow_type:
-    start_date = "1945-01-01"
-    end_date = "2021-12-31"
-elif "obs_pub" in inflow_type:
-    start_date = "1945-01-01"
-    end_date = "2022-12-31"
-
-#%%
-from pywrdrb.model_builder import PywrdrbModelBuilder
-# Set the filename based on inflow type
-model_filename = f"{model_data_dir}drb_model_full_{inflow_type}_test_temp.json"
-
-
-output_filename = f"{output_dir}drb_output_{inflow_type}_test_temp.hdf5"
-model_filename = f"{model_data_dir}drb_model_full_{inflow_type}_test_temp.json"
-
-### make model json files
-mb = PywrdrbModelBuilder(
-    inflow_type, 
-    start_date, 
-    end_date,
-    options={
-        "inflow_ensemble_indices":None,
-        "use_hist_NycNjDeliveries":True, 
-        "predict_temperature":True, 
-        "predict_salinity":False, 
-        })
-mb.make_model()
-mb.write_model(model_filename)
-
-#%%
-timer.start()
-### Load the model
-model = Model.load(model_filename)
-
-### Add a storage recorder
-TablesRecorder(
-    model, output_filename, parameters=[p for p in model.parameters if p.name]
-)
-
-#%%
-### Run the model
-stats = model.run()
-stats_df = stats.to_dataframe()
-timer.stop()
-print(timer.elapsed_time())
+time_used = {}
+for inflow_type in ['nhmv10_withObsScaled', 'nwmv21_withObsScaled', 'nhmv10', 'nwmv21']:
+    for predict_temperature in [True, False]:
+        seconds = run_model(inflow_type, predict_temperature, Timer())
+        time_used[(inflow_type, predict_temperature)] = seconds
 #%%
 import h5py
 import matplotlib.pyplot as plt

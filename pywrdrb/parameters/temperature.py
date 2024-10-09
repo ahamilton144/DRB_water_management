@@ -125,7 +125,7 @@ class TemperatureLSTM():
 
         mu_pred = []
         sd_pred = []
-        for i in range(int(saved_t), int(saved_t) + n):
+        for i in range(int(saved_t), int(saved_t) + n + 1):
             unscaled_data = (
                 self.lstm.x[
                     0,
@@ -268,7 +268,7 @@ class TotalThermalReleaseRequirement(Parameter):
 
         # Estimate the mean max temperature at Lordsville without thermal release
         mu_list, sd_list = self.temperature_lstm.temp_model.forecast(
-            n=1,
+            n=0,
             total_reservoir_release_t=total_reservoir_release,
             timestep=timestep
             )
