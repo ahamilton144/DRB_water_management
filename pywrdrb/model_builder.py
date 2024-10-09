@@ -1410,19 +1410,38 @@ class PywrdrbModelBuilder():
     #!! Not yet complete
     def add_parameter_couple_temp_lstm(self):
         try:
-            from pywrdrb.parameters.temperature import TemperaturePrediction
+            from pywrdrb.parameters.temperature import (
+                TemperatureModel,
+                TotalThermalReleaseRequirement, 
+                AllocateThermalReleaseRequirement, 
+                PredictedMaxTemperatureAtLordsville, 
+                GetTemperatureLSTMValue
+            )
         except Exception as e:
             print(f"Temperature prediction model not available. Error: {e}")
 
         model_dict = self.model_dict
+        # Add the temperature model so that all instances can use or retrieve attributes from it.
+        # The value method return None.
+        model_dict["parameters"]["temperature_model"] = {
+                "type": "TemperatureModel",
+            }
+
         # Add the additional thermal release (plug-in need to be activated otherwise
         # The additional thermal release is 0). The additional thermal releases only 
         # apply to ["cannonsville", "pepacton"].
 
-        model_dict["parameters"]["thermal_release_requirement"] = {
+        model_dict["parameters"]["total_thermal_release_requirement"] = {
                 "type": "TotalThermalReleaseRequirement",
             }
-        
+        model_dict["parameters"]["predicted_max_temperature_at_lordsville_without_thermal_release_mu"] = {
+                "type": "GetTemperatureLSTMValueWithoutThermalRelease",
+                "variable": "mu",
+            }
+        model_dict["parameters"]["predicted_max_temperature_at_lordsville_without_thermal_release_sd"] = {
+                "type": "GetTemperatureLSTMValueWithoutThermalRelease",
+                "variable": "sd",
+            }
         for reservoir in ["cannonsville", "pepacton"]:
             # Overwrite the max flow of the outflow node with the additional thermal release.
             # We searched over all nodes to find the node with the name "outflow_{reservoir}".
@@ -1437,11 +1456,11 @@ class PywrdrbModelBuilder():
                 "agg_func": "sum",
                 "parameters": [
                     f"downstream_release_target_{reservoir}",
-                    f"additional_thermal_release_{reservoir}"
+                    f"thermal_release_{reservoir}"
                 ],
             }
 
-            model_dict["parameters"][f"additional_thermal_release_{reservoir}"] = {
+            model_dict["parameters"][f"thermal_release_{reservoir}"] = {
                 "type": "AllocateThermalReleaseRequirement",
                 "reservoir": reservoir,
             }
@@ -1454,9 +1473,9 @@ class PywrdrbModelBuilder():
                 "type": "GetTemperatureLSTMValue",
                 "variable": "mu",
             }
-        model_dict["parameters"]["predicted_max_temperature_at_lordsville_sig"] = {
+        model_dict["parameters"]["predicted_max_temperature_at_lordsville_sd"] = {
                 "type": "GetTemperatureLSTMValue",
-                "variable": "sig",
+                "variable": "sd",
             }
         # Do we need to add an auxiliary node to store temperature?
         # Do we need seperate parameters for mu and sig?

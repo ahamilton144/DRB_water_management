@@ -518,7 +518,7 @@ class TotalReleaseNeededForDownstreamMRF(Parameter):
         self.children.add(predicted_nonnyc_gage_flow_mrf)
         self.children.add(mrf_target_flow)
 
-        ### we only have to acct for previous NYC releases after step 1
+        ### we only have to account for previous NYC releases after step 1
         if step > 1:
             self.previous_release_reservoirs = previous_release_reservoirs
             for p in previous_release_reservoirs:
@@ -583,7 +583,7 @@ class TotalReleaseNeededForDownstreamMRF(Parameter):
                 + self.predicted_demand_nj.get_value(scenario_index),
                 0.0,
             )
-        else:
+        else: # Montague
             release_needed = max(
                 self.mrf_target_flow.get_value(scenario_index)
                 - self.predicted_nonnyc_gage_flow_mrf.get_value(scenario_index)
@@ -620,6 +620,8 @@ class TotalReleaseNeededForDownstreamMRF(Parameter):
         predicted_nonnyc_gage_flow_mrf = load_parameter(
             model, f"predicted_nonnyc_gage_flow_{mrf}_lag{days_ahead}"
         )
+        # Note: f"predicted_nonnyc_gage_flow_{mrf}_lag{days_ahead}" is from 
+        # f"{input_dir}predicted_inflows_diversions_{inflow_type}.csv",
 
         ### now fill in previous releases and current-step flood/ffmp releases based on step
         if step == 1:

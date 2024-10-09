@@ -30,12 +30,52 @@ from pywrdrb.utils.hdf5 import (
 )
 from pywrdrb.utils.options import inflow_type_options
 
-t0 = time.time()
+class Timer:
+    def __init__(self):
+        self.start_time = None
+        self.end_time = None
+    
+    def start(self):
+        """Start the timer."""
+        self.start_time = time.time()
+        self.end_time = None
+        print("Timer started.")
+    
+    def stop(self):
+        """Stop the timer."""
+        if self.start_time is None:
+            raise Exception("Timer has not been started yet!")
+        self.end_time = time.time()
+        print("Timer stopped.")
+    
+    def elapsed_time(self):
+        """Get the elapsed time in HH:mm:ss format."""
+        if self.start_time is None:
+            raise Exception("Timer has not been started yet!")
+        
+        # If the timer is still running, calculate elapsed time until now
+        if self.end_time is None:
+            elapsed_seconds = time.time() - self.start_time
+        else:
+            elapsed_seconds = self.end_time - self.start_time
+        
+        # Convert the elapsed time into hours, minutes, and seconds
+        hours, remainder = divmod(elapsed_seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        return f"{int(hours):02}:{int(minutes):02}:{int(seconds):02}"
+    
+    def reset(self):
+        """Reset the timer."""
+        self.start_time = None
+        self.end_time = None
+        print("Timer reset.")
+
+timer = Timer()
 
 ### specify inflow type from command line args
 # nhmv10_withObsScaled nwmv21_withObsScaled nhmv10 nwmv21
 #inflow_type = sys.argv[1]
-inflow_type = "nhmv10"
+inflow_type = "nhmv10_withObsScaled"
 
 assert (
     inflow_type in inflow_type_options
@@ -65,7 +105,6 @@ output_filename = f"{output_dir}drb_output_{inflow_type}_test_temp.hdf5"
 model_filename = f"{model_data_dir}drb_model_full_{inflow_type}_test_temp.json"
 
 ### make model json files
-#make_model(inflow_type, model_filename, start_date, end_date)
 mb = PywrdrbModelBuilder(
     inflow_type, 
     start_date, 
@@ -80,6 +119,7 @@ mb.make_model()
 mb.write_model(model_filename)
 
 #%%
+timer.start()
 ### Load the model
 model = Model.load(model_filename)
 
@@ -92,10 +132,11 @@ TablesRecorder(
 ### Run the model
 stats = model.run()
 stats_df = stats.to_dataframe()
-
+timer.stop()
+print(timer.elapsed_time())
 #%%
 import h5py
-
+import matplotlib.pyplot as plt
 def hdf5_to_dict(file_path):
     def recursive_dict(group):
         d = {}
@@ -112,8 +153,108 @@ def hdf5_to_dict(file_path):
     return data_dict
 
 hdf5_data = hdf5_to_dict(output_filename)
+#%%
+import pandas as pd
 
+var_list = [
+    "total_thermal_release_requirement",
+    "predicted_max_temperature_at_lordsville_without_thermal_release_mu",
+    "predicted_max_temperature_at_lordsville_without_thermal_release_sd",
+    "downstream_add_thermal_release_to_target_cannonsville",
+    "downstream_add_thermal_release_to_target_pepacton",
+    "thermal_release_cannonsville",
+    "thermal_release_pepacton",
+    "predicted_max_temperature_at_lordsville_mu",
+    "predicted_max_temperature_at_lordsville_sd"
+    ]
+name_list = [
+    "thermal_release_req",
+    "predicted_max_temp_mu_no_thermal_release",
+    "predicted_max_temp_sd_no_thermal_release",
+    "downstream_release_cannonsville",
+    "downstream_release_pepacton",
+    "thermal_release_cannonsville",
+    "thermal_release_pepacton",
+    "predicted_max_temp_mu",
+    "predicted_max_temp_sd"
+    ]
 
+df = pd.DataFrame()
+for name, var in zip(name_list, var_list):
+    df[name] = hdf5_data[var].flatten()
+    
+times = hdf5_data["time"]
+dates = pd.to_datetime({'year': times['year'], 'month': times['month'], 'day': times['day']})
+df.index = dates
 
+df["thermal_release"] = df["thermal_release_cannonsville"] + df["thermal_release_pepacton"] 
+#%%
+# Assuming 'df' has been properly defined and subsetted as in your provided code.
+dff = df["2001-6-1": "2001-8-31"]  # Use your desired date range.
+dff = df["2005-6-1": "2005-8-31"]
 
+fig, ax = plt.subplots()
+x = dff.index
+# Plot mean temperature with and without control
+ax.plot(x, dff["predicted_max_temp_mu_no_thermal_release"], label="no control", zorder=10)
+ax.plot(x, dff["predicted_max_temp_mu"], lw=1, label="with control", zorder=20)
+
+# Adding the uncertainty bands around the mean predictions
+ax.fill_between(x, 
+                dff["predicted_max_temp_mu_no_thermal_release"] - dff["predicted_max_temp_sd_no_thermal_release"], 
+                dff["predicted_max_temp_mu_no_thermal_release"] + dff["predicted_max_temp_sd_no_thermal_release"], 
+                color='blue', alpha=0.3, label='+/- 1 sd', zorder=9)
+
+ax.fill_between(x, 
+                dff["predicted_max_temp_mu"] - dff["predicted_max_temp_sd"], 
+                dff["predicted_max_temp_mu"] + dff["predicted_max_temp_sd"], 
+                color='orange', alpha=0.3, label='+/- 1 sd', zorder=9)
+
+# Horizontal line for the temperature threshold
+ax.axhline(23.89, color="r", ls="-", label="threshold", lw=1, zorder=100)
+
+# Highlight days with significant thermal releases
+for i, v in enumerate(dff["thermal_release"]):
+    if v > 10:
+        ax.axvline(x[i], zorder=1, lw=3, c="lightgrey")
+
+# Set labels, limits, and legend
+ax.set_ylabel("Max daily temperature (degree C)")
+ax.set_xlabel("Date")
+ax.set_ylim((20, 30))
+ax.legend(ncol=3, loc='upper right', bbox_to_anchor=(1, 1.14), frameon=False)
+plt.xticks(rotation=45)
+plt.show()
+
+# Count days above the threshold
+count_above_threshold_no_control = (dff["predicted_max_temp_mu_no_thermal_release"] > 23.89).sum()
+count_above_threshold_with_control = (dff["predicted_max_temp_mu"] > 23.89).sum()
+print("Number of days without control above 23.89 degree C:", count_above_threshold_no_control)
+print("Number of days with control above 23.89 degree C:", count_above_threshold_with_control)
+
+#%%
+dff = df["2001-6-1": "2001-8-31"]
+#dff = df["2005-6-1": "2005-8-31"]
+fig, ax = plt.subplots()
+x = dff.index
+ax.plot(x, dff["predicted_max_temp_mu_no_thermal_release"], label="no control", zorder=10)
+ax.plot(x, dff["predicted_max_temp_mu"], lw=1, label="with control", zorder=20)
+ax.axhline(23.89, color="r", ls="-", label="threshold") # => 75F = 23.89
+
+for i, v in enumerate(dff["thermal_release"]):
+    if v > 10:
+        ax.axvline(x[i], zorder=1, lw=3, c="lightgrey")
+
+ax.set_ylabel("Max daily temperature (degree C)")
+ax.set_xlabel("Date")
+ax.set_ylim((20, 30))
+ax.legend(ncol=3, loc='upper right', bbox_to_anchor=(1, 1.1), frameon=False)
+plt.xticks(rotation=45)
+plt.show()
+
+count_above_threshold = (df["predicted_max_temp_mu_no_thermal_release"] > 23.89).sum()
+print("Number of days without control above 23.89 degree C:", count_above_threshold)
+
+count_above_threshold = (df["predicted_max_temp_mu"] > 23.89).sum()
+print("Number of days with control above 23.89 degree C:", count_above_threshold)
 
