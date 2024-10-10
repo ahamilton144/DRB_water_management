@@ -93,7 +93,7 @@ class TemperatureLSTM():
 
     def forecast(self, n, total_reservoir_release_t, timestep=None):     
         """
-        Forecast the mean max temperature at Lordsville for the next n timesteps.
+        Forecast the mean max temperature at Lordville for the next n timesteps.
         
         Parameters
         ----------
@@ -107,9 +107,9 @@ class TemperatureLSTM():
         Returns
         -------
         mu_pred: list
-            List of forecasted mean max temperature at Lordsville.
+            List of forecasted mean max temperature at Lordville.
         sd_pred: list
-            List of forecasted standard deviation of max temperature at Lordsville.
+            List of forecasted standard deviation of max temperature at Lordville.
         """
         #print(f"[{timestep}] forecast: {total_reservoir_release_t}")
         # Save current hist states before modifying
@@ -169,7 +169,7 @@ class TemperatureLSTM():
     
     def predict(self, total_reservoir_release, timestep=None): 
         """
-        Predict the mean max temperature at Lordsville for the current timestep and forward the LSTM model by one timestep.
+        Predict the mean max temperature at Lordville for the current timestep and forward the LSTM model by one timestep.
 
         Parameters
         ----------
@@ -181,9 +181,9 @@ class TemperatureLSTM():
         Returns
         -------
         mu_pred: float
-            Predicted mean max temperature at Lordsville.
+            Predicted mean max temperature at Lordville.
         sd_pred: float
-            Predicted standard deviation of max temperature at Lordsville.
+            Predicted standard deviation of max temperature at Lordville.
         """
         #print(f"[{timestep}] predict")
 
@@ -241,7 +241,7 @@ class TemperatureModel(Parameter):
         return cls(model, **data)
 TemperatureModel.register()
 
-# Calculate the total thermal release requirement at Lordsville    
+# Calculate the total thermal release requirement at Lordville    
 class TotalThermalReleaseRequirement(Parameter):
     def __init__(self, model, temperature_model, cannonsville_release, pepacton_release, **kwargs):
         super().__init__(model, **kwargs)
@@ -266,7 +266,7 @@ class TotalThermalReleaseRequirement(Parameter):
             + self.pepacton_release.get_value(scenario_index)
         )
 
-        # Estimate the mean max temperature at Lordsville without thermal release
+        # Estimate the mean max temperature at Lordville without thermal release
         mu_list, sd_list = self.temperature_lstm.temp_model.forecast(
             n=0,
             total_reservoir_release_t=total_reservoir_release,
@@ -353,7 +353,7 @@ class AllocateThermalReleaseRequirement(Parameter):
 AllocateThermalReleaseRequirement.register()
 
 # run predict
-class PredictedMaxTemperatureAtLordsville(Parameter):
+class PredictedMaxTemperatureAtLordville(Parameter):
     def __init__(self, model, total_thermal_release_requirement, temperature_model, downstream_add_thermal_release_to_target_cannonsville, downstream_add_thermal_release_to_target_pepacton, **kwargs):
         super().__init__(model, **kwargs)
         self.downstream_add_thermal_release_to_target_cannonsville = downstream_add_thermal_release_to_target_cannonsville
@@ -400,23 +400,23 @@ class PredictedMaxTemperatureAtLordsville(Parameter):
         # Debugging
         total_thermal_release_requirement = load_parameter(model, "total_thermal_release_requirement")
         return cls(model, total_thermal_release_requirement, temperature_model, downstream_add_thermal_release_to_target_cannonsville, downstream_add_thermal_release_to_target_pepacton, **data) 
-PredictedMaxTemperatureAtLordsville.register()
+PredictedMaxTemperatureAtLordville.register()
 
 class GetTemperatureLSTMValue(Parameter):
-    def __init__(self, model, variable, predicted_max_temperature_at_lordsville_run_lstm, **kwargs):
+    def __init__(self, model, variable, predicted_max_temperature_at_lordville_run_lstm, **kwargs):
         super().__init__(model, **kwargs)
         self.variable = variable
-        self.predicted_max_temperature_at_lordsville_run_lstm = predicted_max_temperature_at_lordsville_run_lstm
+        self.predicted_max_temperature_at_lordville_run_lstm = predicted_max_temperature_at_lordville_run_lstm
 
-        # To ensure predicted_max_temperature_at_lordsville_run_lstm is updated before this parameter.
-        self.children.add(predicted_max_temperature_at_lordsville_run_lstm)
+        # To ensure predicted_max_temperature_at_lordville_run_lstm is updated before this parameter.
+        self.children.add(predicted_max_temperature_at_lordville_run_lstm)
 
     def value(self, timestep, scenario_index):
-        redundant = self.predicted_max_temperature_at_lordsville_run_lstm.get_value(scenario_index)
+        redundant = self.predicted_max_temperature_at_lordville_run_lstm.get_value(scenario_index)
         if self.variable == "mu":
-            return self.predicted_max_temperature_at_lordsville_run_lstm.mu
+            return self.predicted_max_temperature_at_lordville_run_lstm.mu
         elif self.variable == "sd":
-            return self.predicted_max_temperature_at_lordsville_run_lstm.sd
+            return self.predicted_max_temperature_at_lordville_run_lstm.sd
         else:
             raise ValueError("Invalid variable. Must be 'mu' or 'sd'.")
         
@@ -424,6 +424,6 @@ class GetTemperatureLSTMValue(Parameter):
     def load(cls, model, data):
         assert "variable" in data.keys()
         variable = data.pop("variable")
-        predicted_max_temperature_at_lordsville_run_lstm = load_parameter(model, "predicted_max_temperature_at_lordsville_run_lstm")
-        return cls(model, variable, predicted_max_temperature_at_lordsville_run_lstm, **data)
+        predicted_max_temperature_at_lordville_run_lstm = load_parameter(model, "predicted_max_temperature_at_lordville_run_lstm")
+        return cls(model, variable, predicted_max_temperature_at_lordville_run_lstm, **data)
 GetTemperatureLSTMValue.register()

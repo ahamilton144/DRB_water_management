@@ -1416,7 +1416,7 @@ class PywrdrbModelBuilder():
                 TotalThermalReleaseRequirement, 
                 GetTemperatureLSTMValueWithoutThermalRelease,
                 AllocateThermalReleaseRequirement, 
-                PredictedMaxTemperatureAtLordsville, 
+                PredictedMaxTemperatureAtLordville, 
                 GetTemperatureLSTMValue
             )
         except Exception as e:
@@ -1436,11 +1436,11 @@ class PywrdrbModelBuilder():
         model_dict["parameters"]["total_thermal_release_requirement"] = {
                 "type": "TotalThermalReleaseRequirement",
             }
-        model_dict["parameters"]["predicted_max_temperature_at_lordsville_without_thermal_release_mu"] = {
+        model_dict["parameters"]["predicted_max_temperature_at_lordville_without_thermal_release_mu"] = {
                 "type": "GetTemperatureLSTMValueWithoutThermalRelease",
                 "variable": "mu",
             }
-        model_dict["parameters"]["predicted_max_temperature_at_lordsville_without_thermal_release_sd"] = {
+        model_dict["parameters"]["predicted_max_temperature_at_lordville_without_thermal_release_sd"] = {
                 "type": "GetTemperatureLSTMValueWithoutThermalRelease",
                 "variable": "sd",
             }
@@ -1467,15 +1467,15 @@ class PywrdrbModelBuilder():
                 "reservoir": reservoir,
             }
 
-        model_dict["parameters"]["predicted_max_temperature_at_lordsville_run_lstm"] = {
-                "type": "PredictedMaxTemperatureAtLordsville",
+        model_dict["parameters"]["predicted_max_temperature_at_lordville_run_lstm"] = {
+                "type": "PredictedMaxTemperatureAtLordville",
             }
         
-        model_dict["parameters"]["predicted_max_temperature_at_lordsville_mu"] = {
+        model_dict["parameters"]["predicted_max_temperature_at_lordville_mu"] = {
                 "type": "GetTemperatureLSTMValue",
                 "variable": "mu",
             }
-        model_dict["parameters"]["predicted_max_temperature_at_lordsville_sd"] = {
+        model_dict["parameters"]["predicted_max_temperature_at_lordville_sd"] = {
                 "type": "GetTemperatureLSTMValue",
                 "variable": "sd",
             }

@@ -195,14 +195,14 @@ for inflow_type in ['nhmv10_withObsScaled', 'nwmv21_withObsScaled', 'nhmv10', 'n
             hdf5_data = hdf5_to_dict(output_filename)
             var_list = [
                 "total_thermal_release_requirement",
-                "predicted_max_temperature_at_lordsville_without_thermal_release_mu",
-                "predicted_max_temperature_at_lordsville_without_thermal_release_sd",
+                "predicted_max_temperature_at_lordville_without_thermal_release_mu",
+                "predicted_max_temperature_at_lordville_without_thermal_release_sd",
                 "downstream_add_thermal_release_to_target_cannonsville",
                 "downstream_add_thermal_release_to_target_pepacton",
                 "thermal_release_cannonsville",
                 "thermal_release_pepacton",
-                "predicted_max_temperature_at_lordsville_mu",
-                "predicted_max_temperature_at_lordsville_sd"
+                "predicted_max_temperature_at_lordville_mu",
+                "predicted_max_temperature_at_lordville_sd"
                 ]
             name_list = [
                 "thermal_release_req",
@@ -357,14 +357,14 @@ for inflow_type in ['nhmv10_withObsScaled', 'nwmv21_withObsScaled', 'nhmv10', 'n
 
 # var_list = [
 #     "total_thermal_release_requirement",
-#     "predicted_max_temperature_at_lordsville_without_thermal_release_mu",
-#     "predicted_max_temperature_at_lordsville_without_thermal_release_sd",
+#     "predicted_max_temperature_at_lordville_without_thermal_release_mu",
+#     "predicted_max_temperature_at_lordville_without_thermal_release_sd",
 #     "downstream_add_thermal_release_to_target_cannonsville",
 #     "downstream_add_thermal_release_to_target_pepacton",
 #     "thermal_release_cannonsville",
 #     "thermal_release_pepacton",
-#     "predicted_max_temperature_at_lordsville_mu",
-#     "predicted_max_temperature_at_lordsville_sd"
+#     "predicted_max_temperature_at_lordville_mu",
+#     "predicted_max_temperature_at_lordville_sd"
 #     ]
 # name_list = [
 #     "thermal_release_req",
