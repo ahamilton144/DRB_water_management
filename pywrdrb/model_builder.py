@@ -81,7 +81,9 @@ class PywrdrbModelBuilder():
         "inflow_ensemble_indices":None,
         "use_hist_NycNjDeliveries":True, # If True, we use historical NYC/NJ deliveries as demand, else we use predicted demand. Otherwise, assume demand is equal to max allotment under FFMP
         "predict_temperature":False, # If True, we use LSTM model to predict temperature at Lordville
+        "temperature_torch_seed": 4,
         "predict_salinity":False, # If True, we use LSTM model to predict salinity at Trenton
+        "salinity_torch_seed": 4,
         }):
         # Create model dict to hold all model nodes, edges, params, etc, following Pywr protocol. 
         # This will be saved to JSON at end.
@@ -1427,6 +1429,7 @@ class PywrdrbModelBuilder():
         # The value method return None.
         model_dict["parameters"]["temperature_model"] = {
                 "type": "TemperatureModel",
+                "torch_seed": self.options.get("temperature_torch_seed")
             }
 
         # Add the additional thermal release (plug-in need to be activated otherwise
@@ -1496,11 +1499,49 @@ class PywrdrbModelBuilder():
     def add_parameter_couple_salinity_lstm(self):
         model_dict = self.model_dict
         try:
-            from pywrdrb.parameters.salinity import SalinityPrediction
+            from pywrdrb.parameters.salinity import (
+                SalinityModel, 
+                SaltFrontRiverMile, 
+                SaltFrontAdjustFactor
+                )
 
-            model_dict["parameters"]["predicted_salinity"] = {"type": "SalinityPrediction"}
         except Exception as e:
             print(f"Salinity prediction model not available. Error: {e}")
+
+        # For salinity control
+        rivermiles = ["92_5", "87", "82_9", "below_82_9"]
+        mrfs = ["delMontague", "delTrenton"]
+        for mrf in mrfs:
+            for rm in rivermiles:
+                    model_dict["parameters"][f"salt_front_adjust_factor_{rm}_mrf_{mrf}"] = {
+                        "type": "monthlyprofile",
+                        "url": "drb_model_monthlyProfiles.csv",
+                        "index_col": "profile",
+                        "index": f"rm_factor_mrf_{mrf}_{rm}",
+                    }
+
+            model_dict["parameters"][f"salt_front_adjust_factor_{mrf}"] = {
+                            "type": "SaltFrontAdjustFactor",
+                            "mrf": mrf
+                        }
+        # Overwrite total Montague & Trenton flow targets based on drought level of NYC aggregated storage
+        # in add_parameter_montague_trenton_flow_targets()
+        for mrf in mrfs:
+            model_dict["parameters"][f"mrf_target_{mrf}"] = {
+                "type": "aggregated",
+                "agg_func": "product",
+                "parameters": [f"mrf_baseline_{mrf}", f"mrf_drought_factor_{mrf}", f"salt_front_adjust_factor_{mrf}"],
+            }
+
+        model_dict["parameters"]["salinity_model"] = {
+                "type": "SalinityModel",
+                "torch_seed": self.options.get("salinity_torch_seed")
+            }
+        
+        model_dict["parameters"]["salt_front_river_mile"] = {
+                "type": "SaltFrontRiverMile"
+            }
+
          
 
         

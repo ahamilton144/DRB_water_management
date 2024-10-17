@@ -34,15 +34,12 @@ os.chdir(bmi_temp_model_path)
 # BMI class for running the LSTM model
 import torch
 import torch_bmi
-# Set seed
-SEED = 4
-torch.manual_seed(SEED)
 
 class TemperatureLSTM():
     """
     External class wrapper to operate the LSTM model from Zwart et al. (2023) for temperature prediction.
     """
-    def __init__(self, start_date):
+    def __init__(self, start_date, torch_seed):
         """
         Initialize the LSTM model and advance it to the start date of the pywrdrb simulation
 
@@ -66,7 +63,7 @@ class TemperatureLSTM():
 
         # Initializing the BMI for LSTM
         #print("Initializing the temperature prediction LSTM\n")
-        self.lstm.initialize(bmi_cfg_file=bmi_cfg_file)
+        self.lstm.initialize(bmi_cfg_file=bmi_cfg_file, torch_seed=torch_seed)
 
         ### Manully advance the LSTM to the pywrdrb simulation start
         # LSTM is set up to start on 1982-04-03
@@ -225,11 +222,12 @@ class TemperatureLSTM():
 
 
 class TemperatureModel(Parameter):
-    def __init__(self, model, **kwargs):
+    def __init__(self, model, torch_seed, **kwargs):
         super().__init__(model, **kwargs)
         #self.mu, self.sd = 0, 0
         #self.mu_no_control, self.sd_no_control = 0, 0
-        self.temp_model = TemperatureLSTM(start_date=model.timestepper.start)
+        self.torch_seed = torch_seed
+        self.temp_model = TemperatureLSTM(start_date=model.timestepper.start, torch_seed=torch_seed)
         self.timestep = None # safenet to ensure the LSTM is only update once per timestep
 
     def value(self, timestep, scenario_index):
@@ -238,7 +236,8 @@ class TemperatureModel(Parameter):
 
     @classmethod
     def load(cls, model, data):
-        return cls(model, **data)
+        torch_seed = data.pop("torch_seed")
+        return cls(model, torch_seed, **data)
 TemperatureModel.register()
 
 # Calculate the total thermal release requirement at Lordville    
