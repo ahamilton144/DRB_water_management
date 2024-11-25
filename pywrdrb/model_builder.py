@@ -1513,13 +1513,14 @@ class PywrdrbModelBuilder():
         mrfs = ["delMontague", "delTrenton"]
         for mrf in mrfs:
             for rm in rivermiles:
+                    # Load the monthly profile for the salinity control factor
                     model_dict["parameters"][f"salt_front_adjust_factor_{rm}_mrf_{mrf}"] = {
                         "type": "monthlyprofile",
                         "url": "drb_model_monthlyProfiles.csv",
                         "index_col": "profile",
                         "index": f"rm_factor_mrf_{mrf}_{rm}",
                     }
-
+            # Create instance of the SaltFrontAdjustFactor parameter
             model_dict["parameters"][f"salt_front_adjust_factor_{mrf}"] = {
                             "type": "SaltFrontAdjustFactor",
                             "mrf": mrf
@@ -1533,11 +1534,12 @@ class PywrdrbModelBuilder():
                 "parameters": [f"mrf_baseline_{mrf}", f"mrf_drought_factor_{mrf}", f"salt_front_adjust_factor_{mrf}"],
             }
 
+        # Set seed for salinity model
         model_dict["parameters"]["salinity_model"] = {
                 "type": "SalinityModel",
                 "torch_seed": self.options.get("salinity_torch_seed")
             }
-        
+        # Add parameter for salt front river mile        
         model_dict["parameters"]["salt_front_river_mile"] = {
                 "type": "SaltFrontRiverMile"
             }

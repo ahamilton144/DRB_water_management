@@ -4397,7 +4397,7 @@
         },
         "temperature_model": {
             "type": "TemperatureModel",
-            "torch_seed": 4
+            "torch_seed": 3
         },
         "total_thermal_release_requirement": {
             "type": "TotalThermalReleaseRequirement"

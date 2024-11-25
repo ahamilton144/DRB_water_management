@@ -159,7 +159,7 @@ def hdf5_to_dict(file_path):
         data_dict = recursive_dict(f)
 
     return data_dict
-
+#%%
 inflow_type = 'nhmv10_withObsScaled'
 predict_temperature = True
 torch_seed = 8
@@ -171,13 +171,13 @@ for torch_seed in tqdm(range(10)):
         tname = "no_temp_lstm"
     new_end_date = "2016-12-31"#"1993-10-01"
     
-    run_model(
-        inflow_type=inflow_type, 
-        predict_temperature=predict_temperature, 
-        timer=Timer(), 
-        torch_seed=torch_seed, 
-        new_end_date=new_end_date
-        )
+    # run_model(
+    #     inflow_type=inflow_type, 
+    #     predict_temperature=predict_temperature, 
+    #     timer=Timer(), 
+    #     torch_seed=torch_seed, 
+    #     new_end_date=new_end_date
+    #     )
     
     output_filename = rf"{pn.temp_lstm_exp.outputs.dir()}/drb_output_{inflow_type}_{tname}_torchseed{torch_seed}.hdf5"
     hdf5_data = hdf5_to_dict(output_filename)
@@ -210,6 +210,7 @@ for torch_seed in tqdm(range(10)):
     df["total_release"] = df["downstream_release_cannonsville"] + df["downstream_release_pepacton"] 
     df.index = pd.date_range(start="1983-10-01", end=new_end_date, freq="D")
     df_list.append(df)
+
 #%%
 time_used = {}
 for inflow_type in ['nhmv10_withObsScaled', 'nwmv21_withObsScaled', 'nhmv10', 'nwmv21']:
@@ -301,8 +302,31 @@ def plot_temp(df, dates=["1983-10-01", "2016-12-31"], add_band=False, inflow_typ
         for i, dff in enumerate(df):
             dfff = dff[dates[0]: dates[1]]
             x = dfff.index
+            if i == 4:
+                alpha = 0.5
+                zorder = 15
+                color = "red"
+                ax.plot(x, dfff["predicted_max_temp_mu"], lw=2, ls="--", color="k", label=f"seed{i}", zorder=25)
+            else:
+                alpha = 0.05
+                zorder = 9
+                color = "blue"
+                ax.plot(x, dfff["predicted_max_temp_mu"], lw=1, label=f"seed{i}", zorder=20)
+            
             #ax.plot(x, dfff["predicted_max_temp_mu_no_thermal_release"], label="before ctrl", zorder=10)
-            ax.plot(x, dfff["predicted_max_temp_mu"], lw=1, label=f"seed{i}", zorder=20)
+            
+            # Adding the uncertainty bands around the mean predictions
+            if add_band:
+                
+                # ax.fill_between(x, 
+                #                 dfff["predicted_max_temp_mu_no_thermal_release"] - dfff["predicted_max_temp_sd_no_thermal_release"], 
+                #                 dfff["predicted_max_temp_mu_no_thermal_release"] + dfff["predicted_max_temp_sd_no_thermal_release"], 
+                #                 color=color, alpha=alpha, zorder=zorder)
+                
+                ax.fill_between(x, 
+                                dfff["predicted_max_temp_mu"] - dfff["predicted_max_temp_sd"], 
+                                dfff["predicted_max_temp_mu"] + dfff["predicted_max_temp_sd"], 
+                                color=color, alpha=alpha, zorder=zorder)
     else:
         dff = df[dates[0]: dates[1]]
         x = dff.index
@@ -316,10 +340,10 @@ def plot_temp(df, dates=["1983-10-01", "2016-12-31"], add_band=False, inflow_typ
                             dff["predicted_max_temp_mu_no_thermal_release"] + dff["predicted_max_temp_sd_no_thermal_release"], 
                             color='blue', alpha=0.3, label='+/- 1 sd', zorder=9)
             
-            ax.fill_between(x, 
-                            dff["predicted_max_temp_mu"] - dff["predicted_max_temp_sd"], 
-                            dff["predicted_max_temp_mu"] + dff["predicted_max_temp_sd"], 
-                            color='orange', ls=":", alpha=0.3, label='+/- 1 sd', zorder=9)
+            # ax.fill_between(x, 
+            #                 dff["predicted_max_temp_mu"] - dff["predicted_max_temp_sd"], 
+            #                 dff["predicted_max_temp_mu"] + dff["predicted_max_temp_sd"], 
+            #                 color='orange', ls=":", alpha=0.3, label='+/- 1 sd', zorder=9)
     
         # Highlight days with significant thermal releases
         for i, v in enumerate(dff["thermal_release"]):
@@ -360,7 +384,7 @@ def plot_temp(df, dates=["1983-10-01", "2016-12-31"], add_band=False, inflow_typ
     #     f"temp_ts_{inflow_type}_{dates[0]}_{dates[1]}_{add_band}.png"
     #     ), bbox_inches='tight')
     plt.show()
-
+#%%
 df_obv = pd.read_csv(os.path.join(pn.temp_lstm_exp.dir(), "stream_temp_obs.csv"), parse_dates=True, index_col=[0])
 df_drivers = pd.read_csv(os.path.join(pn.temp_lstm_exp.dir(), "drivers.csv"), parse_dates=True, index_col=[0])
 df_drivers = df_drivers[['tmin', 'tmax', 'srad', 'reservoir_release', 'dwallin_mean_temp',
@@ -370,9 +394,10 @@ df_drivers["1993-6-01": "1993-9-30"].plot()
 plt.show()
 
 plot_temp(df_list, dates=["1993-6-01", "1993-9-30"], add_band=False, inflow_type="nhmv10_withObsScaled", ylim=(15, 30), threshold=23.89, df_obv=df_obv)
+plot_temp(df_list, dates=["1993-6-01", "1993-9-30"], add_band=True, inflow_type="nhmv10_withObsScaled", ylim=(15, 30), threshold=23.89, df_obv=df_obv)
 
 df = df_list[4]
-plot_temp(df, dates=["1993-6-01", "1993-9-30"], add_band=False, inflow_type="nhmv10_withObsScaled", ylim=(15, 30), threshold=23.89, df_obv=df_obv, df_drivers=df_drivers[['tmin', 'tmax']])
+plot_temp(df, dates=["1993-6-01", "1993-9-30"], add_band=True, inflow_type="nhmv10_withObsScaled", ylim=(15, 30), threshold=23.89, df_obv=df_obv, df_drivers=df_drivers[['tmin', 'tmax']])
 
 plot_temp(df, dates=["1993-6-01", "1993-9-30"], add_band=False, inflow_type="nhmv10_withObsScaled", ylim=(15, 30), threshold=23.89, df_obv=df_obv, df_drivers=df_drivers[['srad']], ylim2=(0, 350))
 # 

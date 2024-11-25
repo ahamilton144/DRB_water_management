@@ -45,7 +45,7 @@
             "name": "outflow_cannonsville",
             "type": "link",
             "cost": -1000.0,
-            "max_flow": "downstream_add_thermal_release_to_target_cannonsville"
+            "max_flow": "downstream_release_target_cannonsville"
         },
         {
             "name": "spill_cannonsville",
@@ -81,7 +81,7 @@
             "name": "outflow_pepacton",
             "type": "link",
             "cost": -1000.0,
-            "max_flow": "downstream_add_thermal_release_to_target_pepacton"
+            "max_flow": "downstream_release_target_pepacton"
         },
         {
             "name": "spill_pepacton",
@@ -3941,7 +3941,8 @@
             "agg_func": "product",
             "parameters": [
                 "mrf_baseline_delMontague",
-                "mrf_drought_factor_delMontague"
+                "mrf_drought_factor_delMontague",
+                "salt_front_adjust_factor_delMontague"
             ]
         },
         "mrf_target_delTrenton": {
@@ -3949,7 +3950,8 @@
             "agg_func": "product",
             "parameters": [
                 "mrf_baseline_delTrenton",
-                "mrf_drought_factor_delTrenton"
+                "mrf_drought_factor_delTrenton",
+                "salt_front_adjust_factor_delTrenton"
             ]
         },
         "predicted_nonnyc_gage_flow_delMontague_lag1": {
@@ -4395,55 +4397,68 @@
             "type": "VolBalanceNYCDemand",
             "node": "reservoir_neversink"
         },
-        "temperature_model": {
-            "type": "TemperatureModel",
-            "torch_seed": 4
+        "salt_front_adjust_factor_92_5_mrf_delMontague": {
+            "type": "monthlyprofile",
+            "url": "drb_model_monthlyProfiles.csv",
+            "index_col": "profile",
+            "index": "rm_factor_mrf_delMontague_92_5"
         },
-        "total_thermal_release_requirement": {
-            "type": "TotalThermalReleaseRequirement"
+        "salt_front_adjust_factor_87_mrf_delMontague": {
+            "type": "monthlyprofile",
+            "url": "drb_model_monthlyProfiles.csv",
+            "index_col": "profile",
+            "index": "rm_factor_mrf_delMontague_87"
         },
-        "predicted_max_temperature_at_lordville_without_thermal_release_mu": {
-            "type": "GetTemperatureLSTMValueWithoutThermalRelease",
-            "variable": "mu"
+        "salt_front_adjust_factor_82_9_mrf_delMontague": {
+            "type": "monthlyprofile",
+            "url": "drb_model_monthlyProfiles.csv",
+            "index_col": "profile",
+            "index": "rm_factor_mrf_delMontague_82_9"
         },
-        "predicted_max_temperature_at_lordville_without_thermal_release_sd": {
-            "type": "GetTemperatureLSTMValueWithoutThermalRelease",
-            "variable": "sd"
+        "salt_front_adjust_factor_below_82_9_mrf_delMontague": {
+            "type": "monthlyprofile",
+            "url": "drb_model_monthlyProfiles.csv",
+            "index_col": "profile",
+            "index": "rm_factor_mrf_delMontague_below_82_9"
         },
-        "downstream_add_thermal_release_to_target_cannonsville": {
-            "type": "aggregated",
-            "agg_func": "sum",
-            "parameters": [
-                "downstream_release_target_cannonsville",
-                "thermal_release_cannonsville"
-            ]
+        "salt_front_adjust_factor_delMontague": {
+            "type": "SaltFrontAdjustFactor",
+            "mrf": "delMontague"
         },
-        "thermal_release_cannonsville": {
-            "type": "AllocateThermalReleaseRequirement",
-            "reservoir": "cannonsville"
+        "salt_front_adjust_factor_92_5_mrf_delTrenton": {
+            "type": "monthlyprofile",
+            "url": "drb_model_monthlyProfiles.csv",
+            "index_col": "profile",
+            "index": "rm_factor_mrf_delTrenton_92_5"
         },
-        "downstream_add_thermal_release_to_target_pepacton": {
-            "type": "aggregated",
-            "agg_func": "sum",
-            "parameters": [
-                "downstream_release_target_pepacton",
-                "thermal_release_pepacton"
-            ]
+        "salt_front_adjust_factor_87_mrf_delTrenton": {
+            "type": "monthlyprofile",
+            "url": "drb_model_monthlyProfiles.csv",
+            "index_col": "profile",
+            "index": "rm_factor_mrf_delTrenton_87"
         },
-        "thermal_release_pepacton": {
-            "type": "AllocateThermalReleaseRequirement",
-            "reservoir": "pepacton"
+        "salt_front_adjust_factor_82_9_mrf_delTrenton": {
+            "type": "monthlyprofile",
+            "url": "drb_model_monthlyProfiles.csv",
+            "index_col": "profile",
+            "index": "rm_factor_mrf_delTrenton_82_9"
         },
-        "predicted_max_temperature_at_lordville_run_lstm": {
-            "type": "PredictedMaxTemperatureAtLordville"
+        "salt_front_adjust_factor_below_82_9_mrf_delTrenton": {
+            "type": "monthlyprofile",
+            "url": "drb_model_monthlyProfiles.csv",
+            "index_col": "profile",
+            "index": "rm_factor_mrf_delTrenton_below_82_9"
         },
-        "predicted_max_temperature_at_lordville_mu": {
-            "type": "GetTemperatureLSTMValue",
-            "variable": "mu"
+        "salt_front_adjust_factor_delTrenton": {
+            "type": "SaltFrontAdjustFactor",
+            "mrf": "delTrenton"
         },
-        "predicted_max_temperature_at_lordville_sd": {
-            "type": "GetTemperatureLSTMValue",
-            "variable": "sd"
+        "salinity_model": {
+            "type": "SalinityModel",
+            "torch_seed": 8
+        },
+        "salt_front_river_mile": {
+            "type": "SaltFrontRiverMile"
         }
     }
 }
